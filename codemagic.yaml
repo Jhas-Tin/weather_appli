@@ -1,0 +1,24 @@
+workflows:
+  ios-free-build:
+    name: iOS Free Accounts Build
+    max_build_duration: 120
+    instance_type: mac_mini_m1
+    environment:
+      flutter: stable
+      xcode: latest
+    scripts:
+      - name: Get Flutter dependencies
+        script: flutter packages pub get
+
+      - name: Build unsigned iOS IPA
+        script: |
+          # The --no-codesign flag is critical for free accounts
+          flutter build ios --release --no-codesign
+
+          # Manually package the .app into a .ipa structure
+          mkdir -p build/ios/iphoneos/Payload
+          cp -r build/ios/iphoneos/Runner.app build/ios/iphoneos/Payload/
+          cd build/ios/iphoneos && zip -r unsigned_app.ipa Payload
+
+    artifacts:
+      - build/ios/iphoneos/unsigned_app.ipa
