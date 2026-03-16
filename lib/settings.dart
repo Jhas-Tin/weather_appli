@@ -1,9 +1,43 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart';
 import 'variable.dart';
 
 class Settings extends ConsumerWidget {
   const Settings({super.key});
+
+  /// AUTO DETECT CITY USING GPS
+  Future<void> _detectCity(WidgetRef ref) async {
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) return;
+
+      LocationPermission permission = await Geolocator.checkPermission();
+
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+
+      if (permission == LocationPermission.deniedForever) return;
+
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+
+      List<Placemark> placemarks = await placemarkFromCoordinates(
+        position.latitude,
+        position.longitude,
+      );
+
+      if (placemarks.isNotEmpty) {
+        String city = placemarks.first.locality ?? "Unknown";
+        ref.read(cityProvider.notifier).state = city;
+      }
+    } catch (e) {
+      print("Location error: $e");
+    }
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -12,15 +46,28 @@ class Settings extends ConsumerWidget {
     final isCelsius = ref.watch(isCelsiusProvider);
     final useCurrentLocation = ref.watch(useCurrentLocationProvider);
 
+    /// If GPS enabled → detect city automatically
+    if (useCurrentLocation) {
+      Future.microtask(() => _detectCity(ref));
+    }
+
     return CupertinoPageScaffold(
+      navigationBar: const CupertinoNavigationBar(
+        middle: Text("Settings"),
+      ),
       child: SafeArea(
         child: ListView(
           children: [
             CupertinoListSection.insetGrouped(
               children: [
+
+                /// DARK MODE
                 CupertinoListTile(
-                  leading: _iconBox(CupertinoIcons.moon_fill, CupertinoColors.systemBlue),
-                  title: Text("Dark Mode"),
+                  leading: _iconBox(
+                    CupertinoIcons.moon_fill,
+                    CupertinoColors.systemBlue,
+                  ),
+                  title: const Text("Dark Mode"),
                   trailing: CupertinoSwitch(
                     value: darkMode,
                     onChanged: (value) {
@@ -28,44 +75,59 @@ class Settings extends ConsumerWidget {
                     },
                   ),
                 ),
+
+                /// LOCATION (CITY INPUT)
                 CupertinoListTile(
-                  leading: _iconBox(CupertinoIcons.location_fill, CupertinoColors.systemGreen),
-                  title: Text("Location"),
+                  leading: _iconBox(
+                    CupertinoIcons.location_fill,
+                    CupertinoColors.systemGreen,
+                  ),
+                  title: const Text("Location"),
                   trailing: CupertinoButton(
                     padding: EdgeInsets.zero,
                     child: Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(city),
-                        Icon(CupertinoIcons.chevron_forward, size: 18),
+                        const SizedBox(width: 4),
+                        const Icon(
+                          CupertinoIcons.chevron_forward,
+                          size: 18,
+                        ),
                       ],
                     ),
                     onPressed: () {
                       final controller = TextEditingController(text: city);
+
                       showCupertinoDialog(
                         context: context,
                         builder: (context) {
                           return CupertinoAlertDialog(
-                            title: Text("City"),
-                            content: CupertinoTextField(
-                              controller: controller,
-                              placeholder: "Enter city",
+                            title: const Text("City"),
+                            content: Padding(
+                              padding: const EdgeInsets.only(top: 10),
+                              child: CupertinoTextField(
+                                controller: controller,
+                                placeholder: "Enter city",
+                              ),
                             ),
                             actions: [
                               CupertinoDialogAction(
-                                child: Text("Save"),
+                                child: const Text("Save"),
                                 onPressed: () {
                                   final newCity = controller.text.trim();
                                   if (newCity.isEmpty) return;
 
-                                  // Update Riverpod provider
-                                  ref.read(cityProvider.notifier).state = newCity;
+                                  ref
+                                      .read(cityProvider.notifier)
+                                      .state = newCity;
 
                                   Navigator.pop(context);
                                 },
                               ),
                               CupertinoDialogAction(
                                 isDestructiveAction: true,
-                                child: Text("Cancel"),
+                                child: const Text("Cancel"),
                                 onPressed: () => Navigator.pop(context),
                               ),
                             ],
@@ -75,13 +137,17 @@ class Settings extends ConsumerWidget {
                     },
                   ),
                 ),
-                // Metrics
+
+                /// METRICS
                 CupertinoListTile(
-                  leading: _iconBox(CupertinoIcons.thermometer, CupertinoColors.systemPurple),
-                  title: Text("Metrics"),
+                  leading: _iconBox(
+                    CupertinoIcons.thermometer,
+                    CupertinoColors.systemPurple,
+                  ),
+                  title: const Text("Metrics"),
                   trailing: CupertinoSegmentedControl<bool>(
                     groupValue: isCelsius,
-                    children: {
+                    children: const {
                       true: Padding(
                         padding: EdgeInsets.symmetric(horizontal: 8),
                         child: Text("°C"),
@@ -96,40 +162,55 @@ class Settings extends ConsumerWidget {
                     },
                   ),
                 ),
+
+                /// NOTIFICATIONS / GPS
                 CupertinoListTile(
-                  leading: _iconBox(CupertinoIcons.bell, CupertinoColors.systemMint),
-                  title: Text("Notifications"),
+                  leading: _iconBox(
+                    CupertinoIcons.bell,
+                    CupertinoColors.systemMint,
+                  ),
+                  title: const Text("Notifications"),
                   trailing: Text(
                     useCurrentLocation ? "Current Location" : city,
-                    style: TextStyle(color: CupertinoColors.systemBlue),
+                    style: const TextStyle(
+                      color: CupertinoColors.systemBlue,
+                    ),
                   ),
                   onTap: () {
                     showCupertinoDialog(
                       context: context,
                       builder: (context) {
                         return CupertinoAlertDialog(
-                          title: Text("Notification"),
-                          content: Text(
+                          title: const Text("Notification"),
+                          content: const Text(
                             "Weather will send you a notification when the weather changes.",
                           ),
                           actions: [
                             CupertinoDialogAction(
-                              child: Text("Use Current Location"),
+                              child: const Text("Use Current Location"),
                               onPressed: () {
-                                ref.read(useCurrentLocationProvider.notifier).state = true;
+                                ref
+                                    .read(
+                                    useCurrentLocationProvider.notifier)
+                                    .state = true;
+
                                 Navigator.pop(context);
                               },
                             ),
                             CupertinoDialogAction(
-                              child: Text("Turn Off"),
+                              child: const Text("Turn Off"),
                               onPressed: () {
-                                ref.read(useCurrentLocationProvider.notifier).state = false;
+                                ref
+                                    .read(
+                                    useCurrentLocationProvider.notifier)
+                                    .state = false;
+
                                 Navigator.pop(context);
                               },
                             ),
                             CupertinoDialogAction(
                               isDestructiveAction: true,
-                              child: Text("Cancel"),
+                              child: const Text("Cancel"),
                               onPressed: () => Navigator.pop(context),
                             ),
                           ],
@@ -149,11 +230,15 @@ class Settings extends ConsumerWidget {
 
 Widget _iconBox(IconData icon, Color color) {
   return Container(
-    padding: EdgeInsets.all(6),
+    padding: const EdgeInsets.all(6),
     decoration: BoxDecoration(
       color: color,
       borderRadius: BorderRadius.circular(6),
     ),
-    child: Icon(icon, size: 16, color: CupertinoColors.white),
+    child: Icon(
+      icon,
+      size: 16,
+      color: CupertinoColors.white,
+    ),
   );
 }

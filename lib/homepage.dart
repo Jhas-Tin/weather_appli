@@ -2,7 +2,12 @@ import 'dart:convert';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
+import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import 'variable.dart';
+import 'weather_map.dart';
 
 class DailyForecast {
   final DateTime date;
@@ -30,6 +35,8 @@ class WeatherHome extends StatelessWidget {
   final bool isCelsius;
   final List<DailyForecast> weeklyForecast;
   final Map<String, List<Color>> weatherBackgrounds;
+  final double? lat;
+  final double? lon;
 
   const WeatherHome({
     super.key,
@@ -42,19 +49,27 @@ class WeatherHome extends StatelessWidget {
     required this.isCelsius,
     required this.weeklyForecast,
     required this.weatherBackgrounds,
+    this.lat,
+    this.lon,
   });
 
   String _getWeatherGif(String condition) {
     switch (condition) {
-      case "Rain": return "assets/animations/rainy2.jpg";
-      case "Thunderstorm": return "assets/animations/thunder.jpg";
-      case "Snow": return "assets/animations/snow.jpg";
-      case "Clear": return "assets/animations/sunny.jpg";
+      case "Rain":
+        return "assets/animations/rainy2.jpg";
+      case "Thunderstorm":
+        return "assets/animations/thunder.jpg";
+      case "Snow":
+        return "assets/animations/snow.jpg";
+      case "Clear":
+        return "assets/animations/sunny.jpg";
       case "Mist":
       case "Fog":
-      case "Haze": return "assets/animations/mist.jpg";
+      case "Haze":
+        return "assets/animations/mist.jpg";
       case "Clouds":
-      default: return "assets/animations/cloudy2.jpg";
+      default:
+        return "assets/animations/cloudy2.jpg";
     }
   }
 
@@ -68,7 +83,11 @@ class WeatherHome extends StatelessWidget {
     return Stack(
       children: [
         Positioned.fill(
-          child: Image.asset(_getWeatherGif(condition), fit: BoxFit.cover, gaplessPlayback: true),
+          child: Image.asset(
+            _getWeatherGif(condition),
+            fit: BoxFit.cover,
+            gaplessPlayback: true,
+          ),
         ),
         Positioned.fill(
           child: AnimatedContainer(
@@ -77,8 +96,9 @@ class WeatherHome extends StatelessWidget {
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: (weatherBackgrounds[condition] ?? [const Color(0xFF3A8DFF), const Color(0xFF4FACFE)])
-                    .map((c) => c.withOpacity(0.55))
+                colors: (weatherBackgrounds[condition] ??
+                    [const Color(0xFF3A8DFF), const Color(0xFF4FACFE)])
+                    .map((c) => c.withValues(alpha: 0.55))
                     .toList(),
               ),
             ),
@@ -88,82 +108,241 @@ class WeatherHome extends StatelessWidget {
           child: Column(
             children: [
               const SizedBox(height: 20),
-              Icon(weatherIcon, size: 80, color: CupertinoColors.white),
-              const SizedBox(height: 8),
-              Text(city, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w600, color: CupertinoColors.white)),
-              const SizedBox(height: 4),
-              Text(condition, style: const TextStyle(fontSize: 18, color: CupertinoColors.white)),
-              const SizedBox(height: 4),
-              Text(temp, style: const TextStyle(fontSize: 96, fontWeight: FontWeight.w200, color: CupertinoColors.white)),
-              const SizedBox(height: 8),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(city,
+                            style: const TextStyle(
+                                fontSize: 32,
+                                fontWeight: FontWeight.bold,
+                                color: CupertinoColors.white)),
+                        const SizedBox(height: 4),
+                        Text(condition,
+                            style: const TextStyle(
+                                fontSize: 18, color: CupertinoColors.white)),
+                        const SizedBox(height: 10),
+                        Text(temp,
+                            style: const TextStyle(
+                                fontSize: 96,
+                                fontWeight: FontWeight.w200,
+                                color: CupertinoColors.white)),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        CupertinoButton(
+                          padding: EdgeInsets.zero,
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              CupertinoPageRoute(
+                                builder: (context) => const WeatherMap(),
+                              ),
+                            );
+                          },
+                          child: const Icon(
+                            CupertinoIcons.map,
+                            color: CupertinoColors.white,
+                            size: 40,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Icon(weatherIcon, size: 70, color: CupertinoColors.white),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 10),
               Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   Row(
                     children: [
-                      const Icon(CupertinoIcons.drop_fill, size: 18, color: CupertinoColors.white),
+                      const Icon(CupertinoIcons.drop_fill,
+                          size: 18, color: CupertinoColors.white),
                       const SizedBox(width: 6),
-                      Text("Humidity: $humidity%", style: const TextStyle(color: CupertinoColors.white)),
+                      Text("Humidity: $humidity%",
+                          style:
+                          const TextStyle(color: CupertinoColors.white)),
                     ],
                   ),
-                  const SizedBox(width: 24),
                   Row(
                     children: [
-                      const Icon(CupertinoIcons.wind, size: 18, color: CupertinoColors.white),
+                      const Icon(CupertinoIcons.wind,
+                          size: 18, color: CupertinoColors.white),
                       const SizedBox(width: 6),
-                      Text("Wind: $windSpeed km/h", style: const TextStyle(color: CupertinoColors.white)),
+                      Text("Wind: $windSpeed km/h",
+                          style:
+                          const TextStyle(color: CupertinoColors.white)),
                     ],
                   ),
                 ],
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 16),
+
+              if (lat != null && lon != null)
+                GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      CupertinoPageRoute(
+                        builder: (context) => const WeatherMap(),
+                      ),
+                    );
+                  },
+                  child: Container(
+                    height: 150,
+                    margin: const EdgeInsets.symmetric(horizontal: 16),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: CupertinoColors.white, width: 2),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(18),
+                      child: Stack(
+                        children: [
+                          FlutterMap(
+                            options: MapOptions(
+                              initialCenter: LatLng(lat!, lon!),
+                              initialZoom: 8.0,
+                              interactionOptions: const InteractionOptions(
+                                flags: InteractiveFlag.none,
+                              ),
+                            ),
+                            children: [
+                              TileLayer(
+                                urlTemplate: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+                                userAgentPackageName: 'com.example.weather_app',
+                              ),
+                              MarkerLayer(
+                                markers: [
+                                  Marker(
+                                    point: LatLng(lat!, lon!),
+                                    width: 30,
+                                    height: 30,
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        color: CupertinoColors.systemRed.withOpacity(0.9),
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color: CupertinoColors.white,
+                                          width: 2,
+                                        ),
+                                      ),
+                                      child: const Icon(
+                                        CupertinoIcons.location_solid,
+                                        color: CupertinoColors.white,
+                                        size: 16,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                          Positioned(
+                            top: 8,
+                            right: 8,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: CupertinoColors.black.withOpacity(0.6),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(CupertinoIcons.map, color: CupertinoColors.white, size: 12),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    "Tap to open",
+                                    style: TextStyle(
+                                      color: CupertinoColors.white,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+
+              const SizedBox(height: 16),
+
               Expanded(
                 child: Container(
                   margin: const EdgeInsets.symmetric(horizontal: 16),
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
                   decoration: const BoxDecoration(
                     color: Color.fromARGB(50, 15, 45, 55),
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(50)),
+                    borderRadius:
+                    BorderRadius.vertical(top: Radius.circular(50)),
                   ),
                   child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: const [
-                          Icon(CupertinoIcons.calendar, color: CupertinoColors.white, size: 18),
-                          SizedBox(width: 8),
-                          Text("Weather Forecast", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: CupertinoColors.white)),
-                        ],
+                      const Padding(
+                        padding: EdgeInsets.only(bottom: 12),
+                        child: Row(
+                          children: [
+                            Icon(CupertinoIcons.calendar,
+                                color: CupertinoColors.white, size: 18),
+                            SizedBox(width: 8),
+                            Text("Weather Forecast",
+                                style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: CupertinoColors.white)),
+                          ],
+                        ),
                       ),
-                      const SizedBox(height: 12),
                       Expanded(
                         child: ListView.builder(
+                          scrollDirection: Axis.horizontal,
                           itemCount: weeklyForecast.length,
                           itemBuilder: (context, index) {
                             final day = weeklyForecast[index];
                             final dayName = getDayLabel(day.date);
-                            final min = isCelsius ? "${day.minTemp.toStringAsFixed(0)}°" : "${(day.minTemp * 9 ~/ 5 + 32)}°";
-                            final max = isCelsius ? "${day.maxTemp.toStringAsFixed(0)}°" : "${(day.maxTemp * 9 ~/ 5 + 32)}°";
+                            final min = isCelsius
+                                ? "${day.minTemp.toStringAsFixed(0)}°"
+                                : "${(day.minTemp * 9 ~/ 5 + 32)}°";
+                            final max = isCelsius
+                                ? "${day.maxTemp.toStringAsFixed(0)}°"
+                                : "${(day.maxTemp * 9 ~/ 5 + 32)}°";
 
-                            return Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 10),
-                              child: Row(
+                            return Container(
+                              width: 90,
+                              margin:
+                              const EdgeInsets.symmetric(horizontal: 6),
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: const Color.fromARGB(40, 255, 255, 255),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  SizedBox(width: 100, child: Text(dayName, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: CupertinoColors.white))),
-                                  Icon(day.icon, color: CupertinoColors.white),
-                                  const SizedBox(width: 10),
-                                  Text(min, style: const TextStyle(color: CupertinoColors.white)),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: Container(
-                                      height: 6,
-                                      decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(10),
-                                        gradient: const LinearGradient(colors: [CupertinoColors.systemYellow, CupertinoColors.systemRed]),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Text(max, style: const TextStyle(color: CupertinoColors.white)),
+                                  Text(dayName,
+                                      style: const TextStyle(
+                                          color: CupertinoColors.white)),
+                                  const SizedBox(height: 6),
+                                  Icon(day.icon,
+                                      color: CupertinoColors.white, size: 28),
+                                  const SizedBox(height: 6),
+                                  Text("$min / $max",
+                                      style: const TextStyle(
+                                          color: CupertinoColors.white)),
                                 ],
                               ),
                             );
@@ -197,6 +376,8 @@ class _HomepageState extends ConsumerState<Homepage> {
   String windSpeed = "";
   IconData weatherIcon = CupertinoIcons.cloud_bolt;
   List<DailyForecast> weeklyForecast = [];
+  double? lat;
+  double? lon;
 
   final Map<String, IconData> weatherIconsMap = {
     "Clouds": CupertinoIcons.cloud,
@@ -218,11 +399,48 @@ class _HomepageState extends ConsumerState<Homepage> {
     "Mist": [const Color(0xFF606C88), const Color(0xFF3F4C6B)],
   };
 
+  Future<void> getCurrentLocationCity() async {
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) return;
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        return;
+      }
+
+      Position position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high);
+
+      List<Placemark> placemarks =
+      await placemarkFromCoordinates(position.latitude, position.longitude);
+
+      if (placemarks.isNotEmpty) {
+        String city = placemarks.first.locality ?? "";
+        if (city.isNotEmpty) {
+          ref.read(cityProvider.notifier).state = city;
+        }
+      }
+    } catch (e) {
+      debugPrint("Location error: $e");
+    }
+  }
+
   @override
   void initState() {
     super.initState();
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (ref.read(useCurrentLocationProvider)) {
+        getCurrentLocationCity();
+      }
       fetchWeather();
+
       ref.listen<String>(cityProvider, (prev, next) {
         if (!mounted) return;
         fetchWeather();
@@ -250,14 +468,14 @@ class _HomepageState extends ConsumerState<Homepage> {
         double windSpeedMps = (data["wind"]["speed"] as num).toDouble();
         windSpeed = (windSpeedMps * 3.6).toStringAsFixed(1);
         weatherIcon = weatherIconsMap[weatherCondition] ?? CupertinoIcons.cloud;
+        lat = data["coord"]["lat"].toDouble();
+        lon = data["coord"]["lon"].toDouble();
       });
 
-      final lat = data["coord"]["lat"];
-      final lon = data["coord"]["lon"];
-      await fetchWeeklyForecast(lat, lon);
+      await fetchWeeklyForecast(lat!, lon!);
       ref.read(isLoadingProvider.notifier).state = false;
     } catch (e) {
-      print("Weather fetch failed: $e");
+      debugPrint("Weather fetch failed: $e");
       ref.read(isLoadingProvider.notifier).state = false;
       setState(() => hasError = true);
     }
@@ -274,12 +492,15 @@ class _HomepageState extends ConsumerState<Homepage> {
       final List list = data['list'];
       Map<String, DailyForecast> dailyMap = {};
       DateTime today = DateTime.now();
-      DateTime startDate = DateTime(today.year, today.month, today.day).add(const Duration(days: 1));
+      DateTime startDate = DateTime(today.year, today.month, today.day)
+          .add(const Duration(days: 1));
 
       for (var item in list) {
         DateTime date = DateTime.fromMillisecondsSinceEpoch(item['dt'] * 1000);
         DateTime dayOnly = DateTime(date.year, date.month, date.day);
-        if (dayOnly.isBefore(startDate) || date.weekday > DateTime.friday) continue;
+        if (dayOnly.isBefore(startDate) || date.weekday > DateTime.friday) {
+          continue;
+        }
         String key = "${date.year}-${date.month}-${date.day}";
         if (!dailyMap.containsKey(key)) {
           String condition = item['weather'][0]['main'];
@@ -294,10 +515,11 @@ class _HomepageState extends ConsumerState<Homepage> {
       }
 
       setState(() {
-        weeklyForecast = dailyMap.values.toList()..sort((a, b) => a.date.compareTo(b.date));
+        weeklyForecast =
+        dailyMap.values.toList()..sort((a, b) => a.date.compareTo(b.date));
       });
     } catch (e) {
-      print("Failed to load weekly forecast: $e");
+      debugPrint("Failed to load weekly forecast: $e");
     }
   }
 
@@ -321,8 +543,8 @@ class _HomepageState extends ConsumerState<Homepage> {
             ),
             const SizedBox(height: 12),
             CupertinoButton.filled(
-              child: const Text("Retry"),
               onPressed: fetchWeather,
+              child: const Text("Retry"),
             ),
           ],
         ),
@@ -339,6 +561,8 @@ class _HomepageState extends ConsumerState<Homepage> {
         isCelsius: isCelsius,
         weeklyForecast: weeklyForecast,
         weatherBackgrounds: weatherBackgrounds,
+        lat: lat,
+        lon: lon,
       ),
     );
   }
