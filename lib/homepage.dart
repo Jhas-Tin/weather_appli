@@ -54,31 +54,36 @@ class WeatherHome extends StatelessWidget {
   });
 
   String _getWeatherGif(String condition) {
-    switch (condition) {
-      case "Rain":
-        return "assets/animations/rainy2.jpg";
-      case "Thunderstorm":
-        return "assets/animations/thunder.jpg";
-      case "Snow":
-        return "assets/animations/snow.jpg";
-      case "Clear":
-        return "assets/animations/sunny.jpg";
-      case "Mist":
-      case "Fog":
-      case "Haze":
-        return "assets/animations/mist.jpg";
-      case "Clouds":
-      default:
-        return "assets/animations/cloudy2.jpg";
+    final lowerCondition = condition.toLowerCase();
+
+    if (lowerCondition.contains("rain") ||
+        lowerCondition.contains("drizzle") ||
+        lowerCondition.contains("shower")) {
+      return "assets/animations/rainy2.jpg";
+    } else if (lowerCondition.contains("thunder")) {
+      return "assets/animations/thunder.jpg";
+    } else if (lowerCondition.contains("snow")) {
+      return "assets/animations/snow.jpg";
+    } else if (lowerCondition.contains("clear") ||
+        lowerCondition.contains("sun")) {
+      return "assets/animations/sunny.jpg";
+    } else if (lowerCondition.contains("mist") ||
+        lowerCondition.contains("fog") ||
+        lowerCondition.contains("haze")) {
+      return "assets/animations/mist.jpg";
+    } else {
+      return "assets/animations/cloudy2.jpg";
     }
   }
 
   @override
   Widget build(BuildContext context) {
     String getDayLabel(DateTime date) {
-      const labels = ["Mon", "Tue", "Wed", "Thu", "Fri"];
+      const labels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
       return labels[date.weekday - 1];
     }
+
+    String cleanCity = city.split(',').first.trim();
 
     return Stack(
       children: [
@@ -87,6 +92,11 @@ class WeatherHome extends StatelessWidget {
             _getWeatherGif(condition),
             fit: BoxFit.cover,
             gaplessPlayback: true,
+            errorBuilder: (context, error, stackTrace) {
+              return Container(
+                color: const Color(0xFF2F80ED),
+              );
+            },
           ),
         ),
         Positioned.fill(
@@ -116,7 +126,7 @@ class WeatherHome extends StatelessWidget {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(city,
+                        Text(cleanCity,
                             style: const TextStyle(
                                 fontSize: 32,
                                 fontWeight: FontWeight.bold,
@@ -152,7 +162,8 @@ class WeatherHome extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 10),
-                        Icon(weatherIcon, size: 70, color: CupertinoColors.white),
+                        Icon(weatherIcon,
+                            size: 70, color: CupertinoColors.white),
                       ],
                     ),
                   ],
@@ -217,7 +228,8 @@ class WeatherHome extends StatelessWidget {
                             ),
                             children: [
                               TileLayer(
-                                urlTemplate: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+                                urlTemplate:
+                                'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
                                 userAgentPackageName: 'com.example.weather_app',
                               ),
                               MarkerLayer(
@@ -228,7 +240,8 @@ class WeatherHome extends StatelessWidget {
                                     height: 30,
                                     child: Container(
                                       decoration: BoxDecoration(
-                                        color: CupertinoColors.systemRed.withOpacity(0.9),
+                                        color: CupertinoColors.systemRed
+                                            .withOpacity(0.9),
                                         shape: BoxShape.circle,
                                         border: Border.all(
                                           color: CupertinoColors.white,
@@ -250,7 +263,8 @@ class WeatherHome extends StatelessWidget {
                             top: 8,
                             right: 8,
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(
                                 color: CupertinoColors.black.withOpacity(0.6),
                                 borderRadius: BorderRadius.circular(12),
@@ -258,7 +272,8 @@ class WeatherHome extends StatelessWidget {
                               child: const Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(CupertinoIcons.map, color: CupertinoColors.white, size: 12),
+                                  Icon(CupertinoIcons.map,
+                                      color: CupertinoColors.white, size: 12),
                                   SizedBox(width: 4),
                                   Text(
                                     "Tap to open",
@@ -387,6 +402,22 @@ class _HomepageState extends ConsumerState<Homepage> {
     "Snow": CupertinoIcons.snow,
     "Drizzle": CupertinoIcons.cloud_drizzle,
     "Mist": CupertinoIcons.cloud_fog,
+    "Smoke": CupertinoIcons.cloud_fog,
+    "Haze": CupertinoIcons.cloud_fog,
+    "Dust": CupertinoIcons.cloud_fog,
+    "Fog": CupertinoIcons.cloud_fog,
+    "Sand": CupertinoIcons.cloud_fog,
+    "Ash": CupertinoIcons.cloud_fog,
+    "Squall": CupertinoIcons.cloud_bolt,
+    "Tornado": CupertinoIcons.cloud_bolt,
+    "Shower": CupertinoIcons.cloud_rain,
+    "Light Rain": CupertinoIcons.cloud_drizzle,
+    "Heavy Rain": CupertinoIcons.cloud_rain,
+    "Moderate Rain": CupertinoIcons.cloud_rain,
+    "Patchy Rain": CupertinoIcons.cloud_drizzle,
+    "Partly Cloudy": CupertinoIcons.cloud,
+    "Overcast": CupertinoIcons.cloud,
+    "Sunny": CupertinoIcons.sun_max,
   };
 
   final Map<String, List<Color>> weatherBackgrounds = {
@@ -397,7 +428,33 @@ class _HomepageState extends ConsumerState<Homepage> {
     "Snow": [const Color(0xFF83a4d4), const Color(0xFFb6fbff)],
     "Drizzle": [const Color(0xFF89F7FE), const Color(0xFF66A6FF)],
     "Mist": [const Color(0xFF606C88), const Color(0xFF3F4C6B)],
+    "Smoke": [const Color(0xFF606C88), const Color(0xFF3F4C6B)],
+    "Haze": [const Color(0xFF606C88), const Color(0xFF3F4C6B)],
+    "Fog": [const Color(0xFF606C88), const Color(0xFF3F4C6B)],
+    "Dust": [const Color(0xFFB8860B), const Color(0xFF8B4513)],
+    "Sand": [const Color(0xFFB8860B), const Color(0xFF8B4513)],
+    "Ash": [const Color(0xFF2C3E50), const Color(0xFF34495E)],
+    "Squall": [const Color(0xFF1A2980), const Color(0xFF26D0CE)],
+    "Tornado": [const Color(0xFF0F2027), const Color(0xFF203A43)],
   };
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _initializeWeather();
+      }
+    });
+  }
+
+  void _initializeWeather() {
+    if (ref.read(useCurrentLocationProvider)) {
+      getCurrentLocationCity();
+    } else {
+      fetchWeather();
+    }
+  }
 
   Future<void> getCurrentLocationCity() async {
     try {
@@ -417,12 +474,12 @@ class _HomepageState extends ConsumerState<Homepage> {
       Position position = await Geolocator.getCurrentPosition(
           desiredAccuracy: LocationAccuracy.high);
 
-      List<Placemark> placemarks =
-      await placemarkFromCoordinates(position.latitude, position.longitude);
+      List<Placemark> placemarks = await placemarkFromCoordinates(
+          position.latitude, position.longitude);
 
       if (placemarks.isNotEmpty) {
         String city = placemarks.first.locality ?? "";
-        if (city.isNotEmpty) {
+        if (city.isNotEmpty && mounted) {
           ref.read(cityProvider.notifier).state = city;
         }
       }
@@ -431,53 +488,97 @@ class _HomepageState extends ConsumerState<Homepage> {
     }
   }
 
-  @override
-  void initState() {
-    super.initState();
+  String determineWeatherCondition(String mainCondition, String description, Map<String, dynamic> data) {
+    String lowerDescription = description.toLowerCase();
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (ref.read(useCurrentLocationProvider)) {
-        getCurrentLocationCity();
+    bool hasRain = false;
+    bool hasSnow = false;
+
+    if (data["rain"] != null) {
+      if (data["rain"] is Map) {
+        hasRain = (data["rain"]["1h"] != null || data["rain"]["3h"] != null);
+      } else {
+        hasRain = true;
       }
-      fetchWeather();
+    }
 
-      ref.listen<String>(cityProvider, (prev, next) {
-        if (!mounted) return;
-        fetchWeather();
-      });
-    });
+    if (data["snow"] != null) {
+      if (data["snow"] is Map) {
+        hasSnow = (data["snow"]["1h"] != null || data["snow"]["3h"] != null);
+      } else {
+        hasSnow = true;
+      }
+    }
+
+    if (hasRain || lowerDescription.contains('thunder') || mainCondition == "Thunderstorm") {
+      if (lowerDescription.contains('thunder') || mainCondition == "Thunderstorm") {
+        return "Thunderstorm";
+      }
+      return "Rain";
+    } else if (hasSnow || lowerDescription.contains('snow') || lowerDescription.contains('sleet')) {
+      return "Snow";
+    } else if (lowerDescription.contains('drizzle')) {
+      return "Drizzle";
+    } else if (lowerDescription.contains('mist') ||
+        lowerDescription.contains('fog') ||
+        lowerDescription.contains('haze')) {
+      return "Mist";
+    } else if (lowerDescription.contains('clear') || lowerDescription.contains('sun')) {
+      return "Clear";
+    } else if (lowerDescription.contains('cloud') || mainCondition == "Clouds") {
+      return "Clouds";
+    }
+
+    return mainCondition;
   }
 
   Future<void> fetchWeather() async {
+    if (!mounted) return;
+
     final city = ref.read(cityProvider);
     ref.read(isLoadingProvider.notifier).state = true;
     setState(() => hasError = false);
 
+    String cleanCityForApi = city.split(',').first.trim();
+
     final link =
-        'https://api.openweathermap.org/data/2.5/weather?q=${Uri.encodeComponent(city)}&appid=9ec82ba0bb50795ef03a62858246ad4c&units=metric';
+        'https://api.openweathermap.org/data/2.5/weather?q=${Uri.encodeComponent(cleanCityForApi)}&appid=9ec82ba0bb50795ef03a62858246ad4c&units=metric';
 
     try {
       final response = await http.get(Uri.parse(link));
       if (response.statusCode != 200) throw Exception("Failed: ${response.body}");
 
       final data = jsonDecode(response.body);
-      setState(() {
-        temp = (data["main"]["temp"] as num).toStringAsFixed(0);
-        weatherCondition = data["weather"][0]["main"];
-        humidity = (data["main"]["humidity"] as num).toString();
-        double windSpeedMps = (data["wind"]["speed"] as num).toDouble();
-        windSpeed = (windSpeedMps * 3.6).toStringAsFixed(1);
-        weatherIcon = weatherIconsMap[weatherCondition] ?? CupertinoIcons.cloud;
-        lat = data["coord"]["lat"].toDouble();
-        lon = data["coord"]["lon"].toDouble();
-      });
 
-      await fetchWeeklyForecast(lat!, lon!);
+      String mainCondition = data["weather"][0]["main"];
+      String description = data["weather"][0]["description"];
+
+      String finalCondition = determineWeatherCondition(mainCondition, description, data);
+
+      if (mounted) {
+        setState(() {
+          temp = (data["main"]["temp"] as num).toStringAsFixed(0);
+          weatherCondition = finalCondition;
+          humidity = (data["main"]["humidity"] as num).toString();
+          double windSpeedMps = (data["wind"]["speed"] as num).toDouble();
+          windSpeed = (windSpeedMps * 3.6).toStringAsFixed(1);
+          weatherIcon = weatherIconsMap[weatherCondition] ??
+              weatherIconsMap[mainCondition] ??
+              CupertinoIcons.cloud;
+          lat = data["coord"]["lat"].toDouble();
+          lon = data["coord"]["lon"].toDouble();
+        });
+
+        await fetchWeeklyForecast(lat!, lon!);
+      }
+
       ref.read(isLoadingProvider.notifier).state = false;
     } catch (e) {
       debugPrint("Weather fetch failed: $e");
+      if (mounted) {
+        setState(() => hasError = true);
+      }
       ref.read(isLoadingProvider.notifier).state = false;
-      setState(() => hasError = true);
     }
   }
 
@@ -498,26 +599,48 @@ class _HomepageState extends ConsumerState<Homepage> {
       for (var item in list) {
         DateTime date = DateTime.fromMillisecondsSinceEpoch(item['dt'] * 1000);
         DateTime dayOnly = DateTime(date.year, date.month, date.day);
-        if (dayOnly.isBefore(startDate) || date.weekday > DateTime.friday) {
+        if (dayOnly.isBefore(startDate)) {
           continue;
         }
+
         String key = "${date.year}-${date.month}-${date.day}";
         if (!dailyMap.containsKey(key)) {
           String condition = item['weather'][0]['main'];
+          String description = item['weather'][0]['description'].toString().toLowerCase();
+
+          String finalCondition = condition;
+          if (description.contains('rain') || description.contains('drizzle') ||
+              description.contains('shower') || description.contains('storm')) {
+            finalCondition = "Rain";
+          } else if (description.contains('snow') || description.contains('sleet')) {
+            finalCondition = "Snow";
+          } else if (description.contains('thunder')) {
+            finalCondition = "Thunderstorm";
+          } else if (description.contains('clear')) {
+            finalCondition = "Clear";
+          } else if (description.contains('cloud')) {
+            finalCondition = "Clouds";
+          }
+
           dailyMap[key] = DailyForecast(
             date: date,
             minTemp: (item['main']['temp_min'] as num).toDouble(),
             maxTemp: (item['main']['temp_max'] as num).toDouble(),
-            condition: condition,
-            icon: weatherIconsMap[condition] ?? CupertinoIcons.cloud,
+            condition: finalCondition,
+            icon: weatherIconsMap[finalCondition] ?? CupertinoIcons.cloud,
           );
         }
       }
 
-      setState(() {
-        weeklyForecast =
-        dailyMap.values.toList()..sort((a, b) => a.date.compareTo(b.date));
-      });
+      if (mounted) {
+        setState(() {
+          weeklyForecast = dailyMap.values.toList()
+            ..sort((a, b) => a.date.compareTo(b.date));
+          if (weeklyForecast.length > 5) {
+            weeklyForecast = weeklyForecast.sublist(0, 5);
+          }
+        });
+      }
     } catch (e) {
       debugPrint("Failed to load weekly forecast: $e");
     }
@@ -525,9 +648,15 @@ class _HomepageState extends ConsumerState<Homepage> {
 
   @override
   Widget build(BuildContext context) {
-    final isLoading = ref.watch(isLoadingProvider);
     final city = ref.watch(cityProvider);
+    final isLoading = ref.watch(isLoadingProvider);
     final isCelsius = ref.watch(isCelsiusProvider);
+
+    ref.listen<String>(cityProvider, (previous, next) {
+      if (next.isNotEmpty && mounted) {
+        fetchWeather();
+      }
+    });
 
     return CupertinoPageScaffold(
       child: isLoading

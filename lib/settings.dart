@@ -7,7 +7,6 @@ import 'variable.dart';
 class Settings extends ConsumerWidget {
   const Settings({super.key});
 
-  /// AUTO DETECT CITY USING GPS
   Future<void> _detectCity(WidgetRef ref) async {
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
@@ -32,7 +31,19 @@ class Settings extends ConsumerWidget {
 
       if (placemarks.isNotEmpty) {
         String city = placemarks.first.locality ?? "Unknown";
-        ref.read(cityProvider.notifier).state = city;
+        String country = placemarks.first.country ?? "";
+        String adminArea = placemarks.first.administrativeArea ?? "";
+
+        String locationString;
+        if (country.toLowerCase().contains('philippines') ||
+            adminArea.toLowerCase().contains('pampanga') ||
+            adminArea.toLowerCase().contains('central luzon')) {
+          locationString = "$city, $adminArea, Philippines";
+        } else {
+          locationString = city;
+        }
+
+        ref.read(cityProvider.notifier).state = locationString;
       }
     } catch (e) {
       print("Location error: $e");
@@ -46,7 +57,9 @@ class Settings extends ConsumerWidget {
     final isCelsius = ref.watch(isCelsiusProvider);
     final useCurrentLocation = ref.watch(useCurrentLocationProvider);
 
-    /// If GPS enabled → detect city automatically
+    // Clean the city name for display - remove anything after comma if present
+    String cleanCity = city.split(',').first.trim();
+
     if (useCurrentLocation) {
       Future.microtask(() => _detectCity(ref));
     }
@@ -61,7 +74,6 @@ class Settings extends ConsumerWidget {
             CupertinoListSection.insetGrouped(
               children: [
 
-                /// DARK MODE
                 CupertinoListTile(
                   leading: _iconBox(
                     CupertinoIcons.moon_fill,
@@ -76,7 +88,6 @@ class Settings extends ConsumerWidget {
                   ),
                 ),
 
-                /// LOCATION (CITY INPUT)
                 CupertinoListTile(
                   leading: _iconBox(
                     CupertinoIcons.location_fill,
@@ -88,7 +99,7 @@ class Settings extends ConsumerWidget {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(city),
+                        Text(cleanCity),
                         const SizedBox(width: 4),
                         const Icon(
                           CupertinoIcons.chevron_forward,
@@ -97,7 +108,7 @@ class Settings extends ConsumerWidget {
                       ],
                     ),
                     onPressed: () {
-                      final controller = TextEditingController(text: city);
+                      final controller = TextEditingController(text: cleanCity);
 
                       showCupertinoDialog(
                         context: context,
@@ -138,7 +149,6 @@ class Settings extends ConsumerWidget {
                   ),
                 ),
 
-                /// METRICS
                 CupertinoListTile(
                   leading: _iconBox(
                     CupertinoIcons.thermometer,
@@ -163,7 +173,6 @@ class Settings extends ConsumerWidget {
                   ),
                 ),
 
-                /// NOTIFICATIONS / GPS
                 CupertinoListTile(
                   leading: _iconBox(
                     CupertinoIcons.bell,
@@ -171,7 +180,7 @@ class Settings extends ConsumerWidget {
                   ),
                   title: const Text("Notifications"),
                   trailing: Text(
-                    useCurrentLocation ? "Current Location" : city,
+                    useCurrentLocation ? "Current Location" : cleanCity, // Using trimmed city name
                     style: const TextStyle(
                       color: CupertinoColors.systemBlue,
                     ),
